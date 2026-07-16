@@ -61,3 +61,42 @@ pub fn printNode(tree: *const Tree, idx: Node.Index, writer: *std.Io.Writer, dep
     if (n.left != .none) try tree.printNode(n.left, writer, depth + 1);
     if (n.right != .none) try tree.printNode(n.right, writer, depth + 1);
 }
+
+pub const CreateContext = struct {
+    tree: *Tree,
+    gpa: Allocator,
+
+    // Creates a new tree creation context, clearing the tree's nodes (if it
+    // had any), and creating the root node (with undefined data)
+    pub fn init(tree: *Tree, gpa: Allocator) Allocator.Error!CreateContext {
+        tree.nodes.clearRetainingCapacity();
+        // Create root
+        _ = try tree.createNode(gpa, undefined); // TODO: Don't use undefined?
+        return .{ .tree = tree, .gpa = gpa };
+    }
+
+    pub const NewNodeOptions = struct {
+        data: i32,
+        left: Node.Index = .none,
+        right: Node.Index = .none,
+        /// A pointer to store the newly created node's index
+        idx: ?*Node.Index = null,
+    };
+
+    pub fn setRoot(ctx: CreateContext, opts: NewNodeOptions) Allocator.Error!void {
+        const r = ctx.tree.rootPtr();
+        r.data = opts.data;
+        r.left = opts.left;
+        r.right = opts.right;
+        if (opts.idx) |ptr| ptr.* = @enumFromInt(0);
+    }
+
+    pub fn newNode(ctx: CreateContext, opts: NewNodeOptions) Allocator.Error!Node.Index {
+        const idx = try ctx.tree.createNode(ctx.gpa, opts.data);
+        const n = ctx.tree.nodePtr(idx);
+        n.left = opts.left;
+        n.right = opts.right;
+        if (opts.idx) |ptr| ptr.* = idx;
+        return idx;
+    }
+};

@@ -8,16 +8,20 @@ pub fn main(init: std.process.Init) !void {
 
     var tree: Tree = .init;
     defer tree.deinit(gpa);
-
-    _ = try tree.createNode(gpa, 45);
-
-    const a = try tree.createNode(gpa, -10);
-    const b = try tree.createNode(gpa, 89_000);
-    const c = try tree.createNode(gpa, 2);
-
-    tree.rootPtr().left = a;
-    tree.rootPtr().right = b;
-    tree.nodePtr(a).left = c;
+    const ctx: Tree.CreateContext = try .init(&tree, gpa);
+    var leaf: Tree.Node.Index = .none;
+    try ctx.setRoot(.{
+        .data = 45,
+        .left = try ctx.newNode(.{
+            .data = -10,
+            .left = try ctx.newNode(.{ .data = 2, .idx = &leaf }),
+        }),
+        .right = try ctx.newNode(.{
+            .data = 89_000,
+        }),
+    });
 
     std.debug.print("{f}", .{tree});
+
+    std.debug.print("leaf: {d}\n", .{@intFromEnum(leaf)});
 }
